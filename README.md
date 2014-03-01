@@ -7,10 +7,10 @@ It also lets you retrieve a gist as well. Creating a new file on the fly in the 
 Install
 -
 ```powershell
-iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/PSharp/master/Install.ps1')
+iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/SharePowerShell/master/Install.ps1')
 ```
 
 Video
 -
 
-![image](https://raw.github.com/dfinke/PSharp/master/images/PSharp.gif)   
+![image](https://raw.github.com/dfinke/SharePowerShell/master/images/HowItWorks.gif)

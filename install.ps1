@@ -29,5 +29,5 @@ if (!(Test-Path $InstallDirectory))
 $wc = New-Object System.Net.WebClient
 $fileList | 
     ForEach-Object {
-        $wc.DownloadFile("https://raw.github.com/dfinke/PSharp/master/$_","$installDirectory\$_")
+        $wc.DownloadFile("https://raw.github.com/dfinke/SharePowerShell/master/$_","$installDirectory\$_")
     }
