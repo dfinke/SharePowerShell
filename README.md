@@ -13,7 +13,7 @@ From The Command Line
 This same module, `Import-Module SharePowerShell`, lets you post a file to a GitHub Gist.
 
 ```powershell
-Send-FileToGist
+Send-FileToGist c:\test.ps1 -Show
 ```
 
 Install
@@ -23,7 +23,7 @@ iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfi
 ```
 
 ISE Video
--
+- 
 
 ![image](https://raw.github.com/dfinke/SharePowerShell/master/images/HowItWorks.gif)
 
