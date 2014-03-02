@@ -1,6 +1,9 @@
-function Send-ISEGist {
-
-$fileName=$psISE.CurrentFile.DisplayName -replace "\*$",""
+function Send-ToGist {
+    param(
+        [string]$FileName,
+        [string]$Content,
+        [Switch]$ShowWebPage
+    )
 
 $content = @"
 <#
@@ -8,9 +11,7 @@ $content = @"
     $(Get-Date)    
 #>
 
-"@
-
-    $content += $psISE.CurrentFile.Editor.Text
+"@ + $content
 
     $gist = @{
         "public"= $true
@@ -22,11 +23,39 @@ $content = @"
         }
     }
     
-    $r=Invoke-RestMethod -Uri 'https://api.github.com/gists' -Method Post -Body ($gist | ConvertTo-Json)
-    start $r.html_url
+    $r = Invoke-RestMethod -Uri 'https://api.github.com/gists' -Method Post -Body ($gist | ConvertTo-Json)
+    
+    if($ShowWebPage) {
+        start $r.html_url
+    } else {
+        [PSCustomObject]@{
+            FileName = $FileName
+            WebPage  = $r.html_url
+        }
+    }
 }
 
-function Get-ISEGist {
+function Send-FileToGist {
+    param(
+        $FullName,
+        [Switch]$ShowWebPage
+    )
+
+    $FullName = Resolve-Path $FullName
+    $Content = ([System.IO.File]::ReadAllText($FullName))
+    Send-ToGist (Split-Path -Leaf $FullName) -Content $Content -ShowWebPage:$ShowWebPage
+}
+
+function Send-ISEToGist {
+    
+    $CurrentFile = $psISE.CurrentFile
+
+    $fileName = $CurrentFile.DisplayName -replace "\*$",""
+    
+    Send-ToGist -FileName $fileName -Content $CurrentFile.Editor.Text -ShowWebPage
+}
+
+function Get-ISEToGist {
 
     [string]$targetGist=[System.Windows.Forms.Clipboard]::GetText()
     
@@ -91,6 +120,8 @@ function Add-SubMenuItem {
     [void]$menu.Submenus.Add($SubMenu, $ScriptBlock, $ShortCut)
 }
 
-Add-MenuItem "_Share PowerShell" $null $null
-Add-SubMenuItem "_Share PowerShell" "_Send Gist" { Send-ISEGist } "Alt+S"
-Add-SubMenuItem "_Share PowerShell" "_Get Gist"  { Get-ISEGist  } "Alt+G"
+if($Host.Name -eq 'Windows PowerShell ISE Host') {
+    Add-MenuItem    "_Share PowerShell" $null $null
+    Add-SubMenuItem "_Share PowerShell" "_Send Gist" { Send-ISEToGist } "Alt+S"
+    Add-SubMenuItem "_Share PowerShell" "_Get Gist"  { Get-ISEGist  } "Alt+G"
+}
