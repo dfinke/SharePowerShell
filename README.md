@@ -19,7 +19,7 @@ Send-FileToGist c:\test.ps1 -Show
 Install
 -
 ```powershell
-iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/SharePowerShell/master/Install.ps1')
+iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/SharePowerShell/master/install.ps1')
 ```
 
 ISE Video
