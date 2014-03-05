@@ -253,7 +253,8 @@ function Send-GithubAuthorizationRequest {
 
 if($Host.Name -eq 'Windows PowerShell ISE Host') {
     Add-MenuItem    "_Share PowerShell" $null $null
-    Add-SubMenuItem "_Share PowerShell" "_Send Gist" { Send-ISEToGist } "Alt+S"
+    Add-SubMenuItem "_Share PowerShell" "_Send Private Gist" { Send-ISEToGist -Private } "Alt+S"
+    Add-SubMenuItem "_Share PowerShell" "Send Public Gist" { Send-ISEToGist } "Alt+P"
     Add-SubMenuItem "_Share PowerShell" "_Get Gist"  { Get-ISEGist  } "Alt+G"
 }
 
