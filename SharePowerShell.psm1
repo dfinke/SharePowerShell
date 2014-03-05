@@ -2,7 +2,8 @@ function Send-ToGist {
     param(
         [string]$FileName,
         [string]$Content,
-        [Switch]$ShowWebPage
+        [Switch]$ShowWebPage, 
+        [switch]$Private
     )
 
 $content = @"
@@ -14,7 +15,7 @@ $content = @"
 "@ + $content
 
     $gist = @{
-        "public"= $true
+        "public"= (-not $Private)
         "description"="Description for $($fileName)"
         "files"= @{
             "$($fileName)"= @{
@@ -23,7 +24,16 @@ $content = @"
         }
     }
     
-    $r = Invoke-RestMethod -Uri 'https://api.github.com/gists' -Method Post -Body ($gist | ConvertTo-Json)
+    $Uri = 'https://api.github.com/gists'
+    if (Test-Path Env:\GITHUB_OAUTH_TOKEN)
+    {
+        $Uri += "?access_token=$env:GITHUB_OAUTH_TOKEN"
+    }
+    elseif (Test-Path variable:GITHUB_OAUTH_TOKEN)
+    {
+        $Uri += "?access_token=$global:GITHUB_OAUTH_TOKEN"
+    }
+    $r = Invoke-RestMethod -Uri $uri  -Method Post -Body ($gist | ConvertTo-Json)
     
     if($ShowWebPage) {
         start $r.html_url
@@ -79,7 +89,7 @@ function Get-ISEGist {
         $NewFile.Editor.Text=$content
         $NewFile.Editor.EnsureVisible(1)
     } catch {
-        Write-Error $_.exception
+        $_.exception
     }
 }
 
@@ -119,8 +129,130 @@ function Add-SubMenuItem {
     [void]$menu.Submenus.Add($SubMenu, $ScriptBlock, $ShortCut)
 }
 
+function Get-GitHubOAuthToken {
+  [CmdletBinding()]
+  param(
+    [parameter()]
+    [System.Management.Automation.Credential()]
+	$Credential = [System.Management.Automation.PSCredential]::Empty,
+    
+    [parameter()]
+    [string]
+    $OneTimePassword,
+
+    [parameter()]
+    [string]
+    $ApplicationName = 'SharePowerShell',
+
+    [parameter()]
+    [switch]
+    $SetEnvironmentalVariable
+  )
+
+  Send-GithubAuthorizationRequest @psboundparameters
+}
+
+function New-GitHubOAuthToken {
+  [CmdletBinding()]
+  param(
+    [parameter(Mandatory=$true)]
+    [System.Management.Automation.Credential()]
+	$Credential = [System.Management.Automation.PSCredential]::Empty,
+    
+    [parameter()]
+    [string]
+    $OneTimePassword,
+
+    [parameter()]
+    [switch]
+    $SetEnvironmentalVariable
+  )
+
+    $postData = @{
+      scopes = @('gist');
+      note = 'SharePowerShell'
+    }
+
+    $params = @{
+      Method = 'POST';
+      ContentType = 'application/json';
+      Body = (ConvertTo-Json $postData -Compress)
+    }
+
+    Send-GithubAuthorizationRequest @psboundparameters -AdditionalRequestParameters $params
+}
+
+function Send-GithubAuthorizationRequest {    
+    param(
+        [parameter(Mandatory=$true)]
+        [System.Management.Automation.Credential()]
+	    $Credential = [System.Management.Automation.PSCredential]::Empty,
+    
+        [parameter()]
+        [string]
+        $OneTimePassword,
+
+        [parameter()]
+        [string]
+        $ApplicationName = 'SharePowerShell',
+
+        [parameter()]
+        [switch]
+        $SetEnvironmentalVariable,
+
+        [parameter()]
+        [System.Collections.Hashtable]
+        $AdditionalRequestParameters = @{}
+    )
+
+    $NetworkCredential = $Credential.GetNetworkCredential()
+    $BaseRequestParameters = @{
+        Uri = 'https://api.github.com/authorizations';
+        Headers = @{
+            Authorization = 'Basic ' + [Convert]::ToBase64String(
+                [Text.Encoding]::ASCII.GetBytes("$($NetworkCredential.UserName):$($NetworkCredential.password)")
+            )
+        }
+    }
+
+    $RequestParameters = $BaseRequestParameters + $AdditionalRequestParameters
+    
+    if ($PSBoundParameters.ContainsKey('OneTimePassword')) {
+        $RequestParameters.Headers.Add('X-GitHub-OTP', $OneTimePassword) | out-null
+    }
+
+    try {
+
+        $global:GITHUB_OAUTH_TOKEN = (Invoke-RestMethod @RequestParameters) | 
+            Where { 
+                $date = [DateTime]::Parse($_.created_at).ToString('g')
+                Write-Verbose "`nFound: $($_.app.name) - Created $date"
+                Write-Verbose "`t$($_.token)`n`t$($_.app.url)"
+                $_.app.name -like "$ApplicationName (API)"
+            } |
+            foreach {
+                Write-Verbose "Persisting token for $($_.app.name)"
+                $_.token
+            }
+
+
+        if ($SetEnvironmentalVariable)
+        {
+            Write-Verbose "Creating environmental variable GITHUB_OATH_TOKEN for the current user."
+            Write-Verbose "`tSetting the variable to $global:GITHUB_OAUTH_TOKEN"
+            $Env:GITHUB_OAUTH_TOKEN = $global:GITHUB_OAUTH_TOKEN
+            [Environment]::SetEnvironmentVariable('GITHUB_OAUTH_TOKEN', $global:GITHUB_OAUTH_TOKEN, 'User')
+        }    
+
+    }
+    catch {
+        Write-Error $_
+    }
+}
+
 if($Host.Name -eq 'Windows PowerShell ISE Host') {
     Add-MenuItem    "_Share PowerShell" $null $null
     Add-SubMenuItem "_Share PowerShell" "_Send Gist" { Send-ISEToGist } "Alt+S"
     Add-SubMenuItem "_Share PowerShell" "_Get Gist"  { Get-ISEGist  } "Alt+G"
 }
+
