@@ -65,7 +65,7 @@ function Send-ISEToGist {
     Send-ToGist -FileName $fileName -Content $CurrentFile.Editor.Text -ShowWebPage
 }
 
-function Get-ISEToGist {
+function Get-ISEGist {
 
     [string]$targetGist=[System.Windows.Forms.Clipboard]::GetText()
     
@@ -80,8 +80,7 @@ function Get-ISEToGist {
         $targetGist = Split-Path -Leaf $targetGist        
     }
     
-    try {
-        $Error.Clear()
+    try {        
         $r=Invoke-RestMethod https://api.github.com/gists/$targetGist
         $fileName=($r.files| Get-Member -MemberType NoteProperty).Name
         $content=$r.files."$fileName".content
@@ -90,7 +89,7 @@ function Get-ISEToGist {
         $NewFile.Editor.Text=$content
         $NewFile.Editor.EnsureVisible(1)
     } catch {
-        $Error[0].exception
+        Write-Error $_.exception
     }
 }
 
